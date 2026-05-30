@@ -5,7 +5,7 @@ import process from "node:process";
 import simpleGit from "simple-git";
 import { RepoContext } from "../lib/core/context";
 import { changedTopDirs } from "../lib/core/diff";
-import { generateAgentDoc } from "../lib/core/generators/agent";
+import { generateAgentsDoc, generateFolderAgentsDoc } from "../lib/core/generators/agent";
 import { folderGenerator } from "../lib/core/generators/folder";
 import { getLLM, type ProviderName } from "../lib/core/llm";
 import { createNotionDocsFromEnv } from "../lib/core/notion";
@@ -151,17 +151,17 @@ async function main(): Promise<void> {
     ? await notionTarget.notion.ensureRepoPage(notionTarget.parentPageId, `${identity.owner}/${identity.repo}`)
     : null;
 
-  console.log("Generating AGENT.md...");
-  const agentDoc = await generateAgentDoc(ctx, llm);
+  console.log("Generating AGENTS.md...");
+  const agentsDoc = await generateAgentsDoc(ctx, llm);
   if (opts.dryRun) {
-    printDryRun("AGENT.md", agentDoc.content);
+    printDryRun("AGENTS.md", agentsDoc.content);
   } else {
     if (!notionTarget || !repoPage) {
       throw new Error("Notion target was not initialized.");
     }
 
-    const page = await notionTarget.notion.upsertMarkdownPage(repoPage.id, "AGENT.md", agentDoc.content);
-    console.log(`${page.created ? "Created" : "Updated"} Notion page for AGENT.md.`);
+    const page = await notionTarget.notion.upsertMarkdownPage(repoPage.id, "AGENTS.md", agentsDoc.content);
+    console.log(`${page.created ? "Created" : "Updated"} Notion page for AGENTS.md.`);
   }
 
   if (folders.length === 0) {
@@ -174,9 +174,12 @@ async function main(): Promise<void> {
   for (const folder of folders) {
     console.log(`Generating ${folder}...`);
     const result = await folderGenerator(folder).run(ctx, llm);
+    console.log(`Generating AGENTS.md for ${folder}...`);
+    const folderAgentsDoc = await generateFolderAgentsDoc(folder, ctx, llm);
 
     if (opts.dryRun) {
       printDryRun(folder, result.content);
+      printDryRun(`${folder}/AGENTS.md`, folderAgentsDoc.content);
       continue;
     }
 
@@ -186,6 +189,15 @@ async function main(): Promise<void> {
 
     const page = await notionTarget.notion.upsertFolderPage(repoPage.id, folder, result.content);
     console.log(`${page.created ? "Created" : "Updated"} Notion page for ${folder}.`);
+
+    const agentsPage = await notionTarget.notion.upsertMarkdownPage(
+      page.id,
+      "AGENTS.md",
+      folderAgentsDoc.content,
+    );
+    console.log(
+      `${agentsPage.created ? "Created" : "Updated"} Notion page for ${folder}/AGENTS.md.`,
+    );
   }
 }
 

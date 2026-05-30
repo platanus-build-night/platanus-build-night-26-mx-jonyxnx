@@ -1,5 +1,5 @@
 name: Kitdoc Notion Docs
-description: Generate repo AGENT.md plus changed-folder documentation and sync it to Notion.
+description: Generate repo AGENTS.md plus changed-folder documentation (each with nested AGENTS.md) and sync it to Notion.
 
 inputs:
   target-repository:
