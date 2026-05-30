@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "kitdoc - Full GitHub repo documentation",
-  description: "Turn a GitHub repository into full, in-depth, Notion-ready documentation.",
+  title: "kitdoc - Concise repo docs",
+  description: "Generate concise developer docs, an agent guide, and a file map from a GitHub repository.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,52 +1,40 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { UrlForm } from "@/components/UrlForm";
 import { PhaseIndicator } from "@/components/PhaseIndicator";
 import { PixelCat } from "@/components/PixelCat";
-import { Starfield } from "@/components/Starfield";
-import { ProgressList, type GenStatus } from "@/components/ProgressList";
-import {
-  MarkdownPreview,
-  type MarkdownPreviewHandle,
-  type PreviewFile,
-} from "@/components/MarkdownPreview";
-import { GENERATOR_CATALOG } from "@/lib/core/catalog";
+import { MarkdownPreview, type PreviewFile } from "@/components/MarkdownPreview";
+import { DocTree, type DocNavItem } from "@/components/DocTree";
 import type { Phase } from "@/lib/core/orchestrator";
 
-type CardStatus = "idle" | "queued" | "running" | "done" | "failed";
-
-interface CardRuntime {
-  status: CardStatus;
-  signals?: string[];
-  bytes?: number;
-  error?: string;
-}
-
 type UIPhase = Phase | "generating" | "complete" | null;
+type DocStatus = "running" | "done" | "failed";
+
+interface DocRuntime extends DocNavItem {
+  content?: string;
+  status: DocStatus;
+}
 
 export default function Home() {
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState<UIPhase>(null);
   const [phaseDetail, setPhaseDetail] = useState<string | undefined>(undefined);
   const [target, setTarget] = useState<string | null>(null);
-  const [cards, setCards] = useState<Record<string, CardRuntime>>(() =>
-    Object.fromEntries(GENERATOR_CATALOG.map((g) => [g.id, { status: "idle" as CardStatus }])),
-  );
-  const [files, setFiles] = useState<PreviewFile[]>([]);
+  const [fileTree, setFileTree] = useState<string[]>([]);
+  const [docs, setDocs] = useState<Record<string, DocRuntime>>({});
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const previewRef = useRef<MarkdownPreviewHandle>(null);
 
   function resetState() {
     setRunning(true);
     setPhase("parsing");
     setPhaseDetail(undefined);
     setTarget(null);
-    setCards(
-      Object.fromEntries(GENERATOR_CATALOG.map((g) => [g.id, { status: "idle" as CardStatus }])),
-    );
-    setFiles([]);
+    setFileTree([]);
+    setDocs({});
+    setSelectedDocId(null);
     setDownloadUrl(null);
     setError(null);
   }
@@ -95,38 +83,28 @@ export default function Home() {
     if (event === "phase") {
       setPhase(d.phase as Phase);
       setPhaseDetail(d.detail as string | undefined);
-    } else if (event === "started") {
+    } else if (event === "repo") {
       setTarget(`${d.owner}/${d.repo}@${d.ref}`);
+      setFileTree((d.fileTree as string[]) ?? []);
       setPhase("generating");
-      const gens = d.generators as { id: string; title: string }[];
-      const ids = new Set(gens.map((g) => g.id));
-      setCards((prev) => {
-        const next: Record<string, CardRuntime> = { ...prev };
-        for (const id of Object.keys(next)) {
-          next[id] = { status: ids.has(id) ? "queued" : "idle" };
-        }
-        return next;
-      });
-    } else if (event === "generator:started") {
+    } else if (event === "doc:started") {
       const id = d.id as string;
-      setCards((prev) => ({ ...prev, [id]: { ...prev[id], status: "running" } }));
-    } else if (event === "generator:done") {
-      const id = d.id as string;
-      const result = d.result as { filename: string; content: string; signals: string[] };
-      setCards((prev) => ({
+      setDocs((prev) => ({
         ...prev,
-        [id]: {
-          status: "done",
-          signals: result.signals,
-          bytes: new TextEncoder().encode(result.content).byteLength,
-        },
+        [id]: docFromEvent(d, "running"),
       }));
-      setFiles((fs) => [...fs, { filename: result.filename, content: result.content }]);
-    } else if (event === "generator:failed") {
+      setSelectedDocId((current) => current ?? id);
+    } else if (event === "doc:done") {
       const id = d.id as string;
-      setCards((prev) => ({
+      setDocs((prev) => ({
         ...prev,
-        [id]: { status: "failed", error: d.error as string },
+        [id]: docFromEvent(d, "done"),
+      }));
+    } else if (event === "doc:failed") {
+      const id = d.id as string;
+      setDocs((prev) => ({
+        ...prev,
+        [id]: docFromEvent(d, "failed"),
       }));
     } else if (event === "complete") {
       setPhase("complete");
@@ -138,138 +116,91 @@ export default function Home() {
     }
   }
 
-  const progressRows = GENERATOR_CATALOG.map((generator) => {
-    const card = cards[generator.id] ?? { status: "idle" as CardStatus };
-    const status: GenStatus =
-      card.status === "done" || card.status === "running" || card.status === "failed"
-        ? card.status
-        : "pending";
-
-    return {
-      id: generator.id,
-      title: generator.title,
-      status,
-      error: card.error,
-      signals: card.signals,
-    };
-  });
-  const showProgress = Boolean(phase || files.length > 0 || error);
-  const isLandingView = !showProgress && !downloadUrl && files.length === 0;
+  const docList = useMemo(() => Object.values(docs), [docs]);
+  const previewFile = useMemo<PreviewFile | null>(() => {
+    const selected = selectedDocId ? docs[selectedDocId] : null;
+    if (selected?.status === "failed") {
+      return {
+        filename: selected.filename,
+        content: `# ${selected.title}\n\nThis doc failed to generate.\n\n${selected.error ?? "Unknown error."}`,
+      };
+    }
+    if (!selected?.content) return null;
+    return { filename: selected.filename, content: selected.content };
+  }, [docs, selectedDocId]);
+  const showExplorer = docList.length > 0 || fileTree.length > 0 || Boolean(error);
+  const isLandingView = !showExplorer && !running && !downloadUrl;
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <Starfield count={120} />
-
-      <main className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-6 pt-4 sm:px-6 sm:pt-6">
-        <div
-          className={`flex flex-1 flex-col gap-4 sm:gap-5 ${isLandingView ? "justify-center" : "pt-2"}`}
-        >
-          <header className="w-full p-4 sm:p-5 md:p-6">
-            <div className="flex w-full flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:gap-6 xl:gap-8">
-              <div className="shrink-0">
-                <PixelCat size="md" />
+    <div className="min-h-screen bg-[#fffdf7]">
+      <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        {isLandingView ? (
+          <section className="mx-auto flex flex-1 max-w-3xl flex-col items-center justify-center text-center">
+            <PixelCat size="md" />
+            <p className="mt-8 text-sm font-medium uppercase tracking-[0.2em] text-stone-400">kitdoc</p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-stone-950 sm:text-6xl">
+              Small docs for fast repo handoffs.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600 sm:text-lg">
+              Paste a GitHub repo and get concise developer docs, an agent guide, and a readable file map.
+            </p>
+            <div className="mt-10 w-full rounded-[2rem] border border-stone-200 bg-white/75 p-3 text-left shadow-sm">
+              <UrlForm disabled={running} onSubmit={handleSubmit} />
+            </div>
+          </section>
+        ) : (
+          <header className="mb-5 flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white/75 p-4 shadow-sm lg:flex-row lg:items-center">
+            <div className="flex items-center gap-4">
+              <PixelCat size="sm" />
+              <div>
+                <p className="text-sm font-semibold text-stone-950">kitdoc</p>
+                <p className="text-sm text-stone-500">{target ?? "Generating concise repo docs"}</p>
               </div>
-
-              <div className="min-w-0 w-full flex-1">
-                <h2 className="text-lg font-bold leading-snug tracking-tight text-stone-950 sm:text-xl md:text-2xl">
-                  Turn repo context into Notion-ready documentation for every PR.
-                </h2>
-                <p className="mt-2 w-full text-sm leading-6 text-stone-600 sm:text-base">
-                  Paste a GitHub repository URL and get full, in-depth documentation for your
-                  project — overview, setup, testing, deployment, conventions, and migrations.
-                </p>
-              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <UrlForm disabled={running} onSubmit={handleSubmit} />
             </div>
           </header>
+        )}
 
-          <section className="rounded-3xl border border-stone-200 bg-white/85 p-4 shadow-lg shadow-stone-200/50 backdrop-blur sm:p-5">
-            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-                  Start a handoff
-                </p>
-                <h2 className="text-lg font-black tracking-tight text-stone-950">
-                  Generate project documentation
-                </h2>
-              </div>
-              <p className="text-sm text-stone-500">
-                Works with public GitHub repositories.
-              </p>
-            </div>
-            <UrlForm disabled={running} onSubmit={handleSubmit} />
-          </section>
-        </div>
-
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4">
-            {phase && (
-              <PhaseIndicator phase={phase} detail={phaseDetail} target={target} />
-            )}
-
-            {showProgress && (
-              <section className="rounded-3xl border border-stone-200 bg-white/85 p-4 shadow-sm backdrop-blur sm:p-5">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-                      Live run
-                    </p>
-                    <h2 className="text-lg font-black tracking-tight text-stone-950">
-                      Generator progress
-                    </h2>
-                  </div>
-                  {target && (
-                    <span className="truncate rounded-full bg-stone-100 px-3 py-1 font-mono text-xs text-stone-600">
-                      {target}
-                    </span>
-                  )}
-                </div>
-                <ProgressList rows={progressRows} />
-              </section>
-            )}
+        {!isLandingView && phase && (
+          <div className="mb-4">
+            <PhaseIndicator phase={phase} detail={phaseDetail} target={target} />
           </div>
-        </section>
+        )}
 
         {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             <strong className="font-semibold">Error: </strong>
             {error}
           </div>
         )}
 
         {downloadUrl && (
-          <div className="flex flex-col gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex flex-col gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-bold text-emerald-900">Project documentation ready</p>
-              <p className="text-sm text-emerald-700">
-                {files.length} in-depth markdown files are ready to download and move into Notion.
-              </p>
+              <p className="text-sm font-semibold text-emerald-900">Docs ready</p>
+              <p className="text-sm text-emerald-700">{docList.length} markdown files are ready to download.</p>
             </div>
             <a
               href={downloadUrl}
-              className="rounded-xl bg-yellow-300 px-4 py-2 text-center text-sm font-bold text-stone-900 shadow-sm transition-colors hover:bg-yellow-200"
+              className="rounded-xl bg-stone-950 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-stone-800"
             >
               Download .zip
             </a>
           </div>
         )}
 
-        {files.length > 0 && (
-          <section id="preview" className="flex scroll-mt-8 flex-col gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-stone-500">
-                Preview
-              </p>
-              <h2 className="text-xl font-black tracking-tight text-stone-950">
-                Review before publishing
-              </h2>
+        {showExplorer && (
+          <section className="grid min-h-[620px] flex-1 grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <DocTree docs={docList} files={fileTree} selectedId={selectedDocId} onSelect={setSelectedDocId} />
+            <div className="min-h-0">
+              <MarkdownPreview file={previewFile} />
             </div>
-            <MarkdownPreview ref={previewRef} files={files} />
           </section>
         )}
 
-        <footer
-          className={`mt-auto flex items-center justify-center text-xs text-stone-500 ${isLandingView ? "pt-4" : "pt-8"}`}
-        >
+        <footer className="mt-auto flex items-center justify-center pt-8 text-xs text-stone-500">
           <span>
             Built at Platanus Build Night by{" "}
             <a
@@ -284,4 +215,17 @@ export default function Home() {
       </main>
     </div>
   );
+}
+
+function docFromEvent(d: Record<string, unknown>, status: DocStatus): DocRuntime {
+  return {
+    id: d.id as string,
+    title: d.title as string,
+    filename: d.filename as string,
+    icon: d.icon as string,
+    kind: d.kind as DocRuntime["kind"],
+    status,
+    content: d.content as string | undefined,
+    error: d.error as string | undefined,
+  };
 }

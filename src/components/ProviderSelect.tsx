@@ -79,7 +79,7 @@ export function ProviderSelect({ value, onChange, disabled }: Props) {
   }
 
   const triggerClass =
-    "flex min-w-[7.5rem] items-center justify-between gap-2 rounded-2xl border border-stone-300 bg-[#fffdf7] px-4 py-3 font-mono text-sm text-stone-700 shadow-sm transition-colors hover:border-stone-400 focus-visible:border-pink-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-100 disabled:cursor-not-allowed disabled:text-stone-400";
+    "flex min-w-[7.5rem] items-center justify-between gap-2 rounded-2xl border border-stone-200 bg-white px-4 py-3 font-mono text-sm text-stone-700 transition-colors hover:border-stone-400 focus-visible:border-stone-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-stone-100 disabled:cursor-not-allowed disabled:text-stone-400";
 
   return (
     <div ref={containerRef} className="relative">
@@ -117,7 +117,7 @@ export function ProviderSelect({ value, onChange, disabled }: Props) {
           id={listboxId}
           role="listbox"
           aria-label="LLM provider"
-          className="absolute right-0 z-20 mt-1 min-w-full overflow-hidden rounded-2xl border border-stone-300 bg-[#fffdf7] py-1 shadow-md"
+          className="absolute right-0 z-20 mt-1 min-w-full overflow-hidden rounded-2xl border border-stone-200 bg-white py-1 shadow-md"
         >
           {OPTIONS.map((option, index) => {
             const isSelected = value === option.value;
@@ -132,13 +132,13 @@ export function ProviderSelect({ value, onChange, disabled }: Props) {
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => selectOption(index)}
                 className={`cursor-pointer px-4 py-2.5 font-mono text-sm transition-colors ${
-                  isActive ? "bg-pink-50 text-stone-900" : "text-stone-700 hover:bg-stone-50"
+                  isActive ? "bg-stone-100 text-stone-900" : "text-stone-700 hover:bg-stone-50"
                 } ${isSelected ? "font-semibold" : ""}`}
               >
                 <span className="flex items-center justify-between gap-3">
                   {option.label}
                   {isSelected && (
-                    <span aria-hidden="true" className="text-pink-500">
+                    <span aria-hidden="true" className="text-stone-900">
                       ✓
                     </span>
                   )}

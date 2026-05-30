@@ -1,7 +1,7 @@
-import { runOrchestrator } from "@/lib/core/orchestrator";
 import { zipResults } from "@/lib/core/zip";
 import { createJob, setJobArtifact } from "@/lib/server/jobs";
 import type { ProviderName } from "@/lib/core/llm";
+import { runWebDocSet } from "@/lib/core/webRun";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,14 +31,11 @@ export async function POST(req: Request) {
       send("job", { jobId });
 
       try {
-        const results = [];
-        for await (const evt of runOrchestrator({
+        for await (const evt of runWebDocSet({
           url: body.url!,
           provider: body.provider,
-          only: body.only,
         })) {
           send(evt.type, evt);
-          if (evt.type === "generator:done") results.push(evt.result);
           if (evt.type === "complete") {
             const zip = await zipResults(evt.results);
             setJobArtifact(jobId, zip, evt.results);

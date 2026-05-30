@@ -5,6 +5,7 @@ import type {
   PartialBlockObjectResponse,
 } from "@notionhq/client/build/src/api-endpoints";
 import { markdownToBlocks } from "@tryfabric/martian";
+import { stripLeadingH1 } from "./markdown";
 
 const NOTION_BLOCK_BATCH_SIZE = 100;
 
@@ -139,7 +140,7 @@ export class NotionDocs {
   }
 
   private async appendMarkdown(blockId: string, markdown: string): Promise<void> {
-    const blocks = this.markdownToNotionBlocks(markdown);
+    const blocks = this.markdownToNotionBlocks(stripLeadingH1(markdown));
     for (let i = 0; i < blocks.length; i += NOTION_BLOCK_BATCH_SIZE) {
       await this.notion.blocks.children.append({
         block_id: blockId,
