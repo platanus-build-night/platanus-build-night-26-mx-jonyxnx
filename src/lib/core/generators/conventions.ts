@@ -1,5 +1,12 @@
 import type { Generator } from "./index";
-import { SYSTEM_PROMPT, buildBroadContext, buildFileBlocks, depthGuidance, scaledTokens } from "./index";
+import {
+  SYSTEM_PROMPT,
+  buildBroadContext,
+  buildFileBlocks,
+  depthGuidance,
+  scaledContext,
+  scaledTokens,
+} from "./index";
 
 const CONFIG_PATTERNS = [
   "**/.eslintrc",
@@ -28,34 +35,39 @@ export const conventions: Generator = {
   title: "Conventions",
   filename: "conventions.md",
   async run(ctx, llm, depth) {
-    const configFiles = await ctx.findFiles(CONFIG_PATTERNS, 20);
-    const sampleFiles = ctx.sampleSourceFiles(16);
+    const configFiles = await ctx.findFiles(CONFIG_PATTERNS, scaledContext(20, depth, 8));
+    const sampleFiles = ctx.sampleSourceFiles(scaledContext(24, depth, 10));
     const signals = [...configFiles, ...sampleFiles];
 
-    let fileBlocks = await buildFileBlocks(ctx, signals, 12 * 1024);
+    let fileBlocks = await buildFileBlocks(ctx, signals, scaledContext(14 * 1024, depth, 5 * 1024));
     if (!fileBlocks) {
       const fallback = await buildBroadContext(ctx);
       fileBlocks = fallback.blocks;
       signals.push(...fallback.paths);
     }
 
-    const user = `Write a SHORT **Codebase patterns** doc for \`${ctx.owner}/${ctx.repo}\` — only the conventions that actually matter here.
+    const user = `Write a SHORT **Codebase patterns** doc for \`${ctx.owner}/${ctx.repo}\` — focus on how the code is shaped, where logic lives, and how developers should make changes.
 
 Detected config files:
 ${configFiles.map((f) => "- `" + f + "`").join("\n") || "- none"}
 
+Representative source files:
+${sampleFiles.map((f) => "- `" + f + "`").join("\n") || "- none"}
+
 ${fileBlocks}
 
-Produce a short doc (only what's supported by the config/code; omit empty sections):
+Produce a short doc based mostly on the source files, not just config/env vars. Only include patterns you actually see in the repo:
 1. \`# Codebase patterns\` heading.
-2. \`## Tooling\` — linter/formatter/language config that's set up, one line each.
-3. \`## Conventions that matter\` — the handful of patterns a new dev must follow (naming, structure, error handling, etc.) as short bullets.
-4. \`## Watch out for\` — a few real gotchas or anti-patterns to avoid here.
+2. \`## Function and module shape\` — how functions/components/classes/services are usually structured (exports, parameters, async style, return shapes, naming). Use short bullets with file examples.
+3. \`## Where logic lives\` — where business logic, API handlers, UI logic, data access, services, and helpers live. Mention the important files/folders only.
+4. \`## Error handling and boundaries\` — how errors, validation, empty states, external calls, and edge cases are handled in the code you saw.
+5. \`## Tooling and formatting\` — only the important lint/format/type rules. Keep this small; do not let config/env vars dominate the page.
+6. \`## Watch out for\` — real gotchas or anti-patterns from the repo.
 
-Keep it short and concrete. Don't restate generic best practices — only what's specific to this repo.
+Keep it short and concrete. Don't restate generic best practices and don't list every file — explain the shapes that matter.
 ${depthGuidance(depth)}`;
 
-    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: scaledTokens(1800, depth) });
+    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: scaledTokens(2200, depth) });
     return { filename: "conventions.md", content, signals };
   },
 };
