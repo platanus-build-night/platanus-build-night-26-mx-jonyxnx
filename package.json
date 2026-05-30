@@ -1,0 +1,44 @@
+{
+  "name": "kitdoc",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Generate categorized markdown documentation for any GitHub repository using an LLM.",
+  "bin": {
+    "kitdoc": "src/cli/index.ts"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "kitdoc": "node --import tsx src/cli/index.ts",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "@notionhq/client": "^5.22.0",
+    "@octokit/rest": "^21.0.2",
+    "@tryfabric/martian": "^1.2.4",
+    "archiver": "^7.0.1",
+    "fast-glob": "^3.3.2",
+    "next": "^15.1.6",
+    "openai": "^4.73.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0",
+    "simple-git": "^3.27.0",
+    "vercel": "^54.6.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.15",
+    "@types/archiver": "^6.0.3",
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.22.3",
+    "typescript": "^5.7.2"
+  }
+}

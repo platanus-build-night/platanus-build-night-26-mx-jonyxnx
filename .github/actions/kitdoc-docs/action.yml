@@ -1,0 +1,95 @@
+name: Kitdoc Notion Docs
+description: Generate changed-folder documentation for a pull request and sync it to Notion.
+
+inputs:
+  target-repository:
+    description: GitHub repository to document, for example owner/repo.
+    required: true
+  target-ref:
+    description: Git ref or SHA to checkout for the target repository.
+    required: true
+  base-sha:
+    description: Base commit SHA for changed-folder detection.
+    required: true
+  head-sha:
+    description: Head commit SHA for changed-folder detection.
+    required: true
+  repo-owner:
+    description: Repository owner to use in generated Notion page titles.
+    required: true
+  repo-name:
+    description: Repository name to use in generated Notion page titles.
+    required: true
+  kitdoc-repository:
+    description: GitHub repository containing the kitdoc CLI.
+    required: true
+  kitdoc-ref:
+    description: Git ref or SHA to checkout for the kitdoc repository.
+    required: true
+  target-path:
+    description: Workspace-relative checkout path for the repository being documented.
+    required: true
+    default: target-repo
+  kitdoc-path:
+    description: Workspace-relative checkout path for the kitdoc CLI repository.
+    required: true
+    default: kitdoc
+  notion-token:
+    description: Notion integration token.
+    required: true
+  notion-page-id:
+    description: Notion page ID under which repo/folder docs are written.
+    required: true
+  llm-provider:
+    description: LLM provider to use, either anthropic or openai.
+    required: true
+    default: anthropic
+  anthropic-api-key:
+    description: Anthropic API key, required when llm-provider is anthropic.
+    required: false
+  openai-api-key:
+    description: OpenAI API key, required when llm-provider is openai.
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.target-repository }}
+        ref: ${{ inputs.target-ref }}
+        path: ${{ inputs.target-path }}
+        fetch-depth: 0
+
+    - name: Checkout kitdoc
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.kitdoc-repository }}
+        ref: ${{ inputs.kitdoc-ref }}
+        path: ${{ inputs.kitdoc-path }}
+        fetch-depth: 1
+
+    - name: Install kitdoc dependencies
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.kitdoc-path }}
+      run: npm ci
+
+    - name: Generate and sync Notion docs
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.kitdoc-path }}
+      env:
+        NOTION_TOKEN: ${{ inputs.notion-token }}
+        NOTION_PAGE_ID: ${{ inputs.notion-page-id }}
+        LLM_PROVIDER: ${{ inputs.llm-provider }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        TARGET_DIR: ${{ github.workspace }}/${{ inputs.target-path }}
+      run: |
+        npm run kitdoc -- \
+          --dir "$TARGET_DIR" \
+          --base "${{ inputs.base-sha }}" \
+          --head "${{ inputs.head-sha }}" \
+          --owner "${{ inputs.repo-owner }}" \
+          --repo "${{ inputs.repo-name }}" \
+          --provider "${{ inputs.llm-provider }}"

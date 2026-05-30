@@ -36,3 +36,55 @@ To deploy while keeping your commits here, mirror your code to a personal repo:
 Your commits stay mirrored here for judging, while the deploy runs from the repo you control.
 
 Have fun! 🚀
+
+## Kitdoc Notion Docs
+
+This repo includes a reusable GitHub Action that documents the top-level folders changed in a pull request and syncs the generated markdown to Notion.
+
+Required repository secrets:
+
+- `NOTION_TOKEN`: Notion integration token with access to the parent page.
+- `NOTION_PAGE_ID`: Notion page ID where repo and folder pages should be created.
+- `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`: LLM key for the selected provider.
+
+Optional repository variable:
+
+- `LLM_PROVIDER`: `anthropic` or `openai`; defaults to `anthropic` in the sample workflow.
+
+Another repository can use the action with a PR-to-main workflow like this:
+
+```yaml
+name: Kitdoc Docs
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notion-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Notion docs
+        uses: OWNER/kitdoc/.github/actions/kitdoc-docs@main
+        with:
+          target-repository: ${{ github.event.pull_request.head.repo.full_name }}
+          target-ref: ${{ github.event.pull_request.head.sha }}
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          repo-owner: ${{ github.repository_owner }}
+          repo-name: ${{ github.event.repository.name }}
+          kitdoc-repository: OWNER/kitdoc
+          kitdoc-ref: main
+          notion-token: ${{ secrets.NOTION_TOKEN }}
+          notion-page-id: ${{ secrets.NOTION_PAGE_ID }}
+          llm-provider: ${{ vars.LLM_PROVIDER || 'anthropic' }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+```
+
+The action checks out the target repository with full git history, checks out the kitdoc repository separately, runs `npm ci` for kitdoc, and then runs the CLI against the target checkout using the pull request base and head SHAs.

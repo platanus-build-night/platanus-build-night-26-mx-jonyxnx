@@ -1,0 +1,36 @@
+name: Kitdoc Docs
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notion-docs:
+    name: Sync changed-folder docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kitdoc action source
+        uses: actions/checkout@v4
+
+      - name: Generate Notion docs
+        uses: ./.github/actions/kitdoc-docs
+        with:
+          target-repository: ${{ github.event.pull_request.head.repo.full_name }}
+          target-ref: ${{ github.event.pull_request.head.sha }}
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          repo-owner: ${{ github.repository_owner }}
+          repo-name: ${{ github.event.repository.name }}
+          kitdoc-repository: ${{ github.repository }}
+          kitdoc-ref: ${{ github.sha }}
+          notion-token: ${{ secrets.NOTION_TOKEN }}
+          notion-page-id: ${{ secrets.NOTION_PAGE_ID }}
+          llm-provider: ${{ vars.LLM_PROVIDER || 'anthropic' }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
