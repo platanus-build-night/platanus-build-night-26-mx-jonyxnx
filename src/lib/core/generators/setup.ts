@@ -31,33 +31,24 @@ export const setup: Generator = {
       signals.push(...fallback.paths);
     }
 
-    const user = `Write the **Setup** documentation for \`${ctx.owner}/${ctx.repo}\`.
+    const user = `Write a SHORT **Local setup** doc for \`${ctx.owner}/${ctx.repo}\` — just the essentials to get it running locally.
 
 Files available:
 
 ${fileBlocks || "(no manifest detected — base it on metadata and file tree only)"}
 
-Repo description: ${ctx.metadata.description ?? "(none)"}
 Primary language: ${ctx.metadata.language ?? "unknown"}
-
 Top-level directories: ${ctx.topDirs().join(", ") || "(none)"}
 
-File tree (truncated):
-\`\`\`
-${ctx.fileTreePreview(220)}
-\`\`\`
+Produce a short doc (only what's clearly supported; omit empty sections):
+1. \`# Local setup\` heading.
+2. \`## Prerequisites\` — runtime/version and package manager, one line each.
+3. \`## Install & run\` — the few commands to install and start it locally, from the real scripts/manifests.
+4. \`## Environment\` — only the env vars that must be set, briefly. Skip if none.
 
-Produce comprehensive internal onboarding documentation. Cover every subsection below; when evidence is missing, say so explicitly instead of inventing commands or values.
-1. \`# Setup\` heading.
-2. \`## Prerequisites\` — runtime, language version, package manager, and system tools (only what's visible).
-3. \`## Install\` — concrete install commands (npm/pnpm/yarn install, pip install, bundle install, etc.).
-4. \`## Environment\` — env vars from examples/configs, grouped by purpose; never invent secret values.
-5. \`## Run locally\` — dev server, worker, CLI, or container commands grounded in scripts and manifests.
-6. \`## First-change workflow\` — recommended sequence: install, configure env, run, make a small change, verify.
-7. \`## Useful scripts\` — what important scripts do and when to use each.
-8. \`## Troubleshooting\` — likely setup issues visible from the repo and how to diagnose them.`;
+Keep it tight: a developer should be able to skim it in under a minute.`;
 
-    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: 4500 });
+    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: 1600 });
     return { filename: "setup.md", content, signals };
   },
 };

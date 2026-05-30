@@ -46,23 +46,21 @@ export const deployment: Generator = {
       signals.push(...fallback.paths);
     }
 
-    const user = `Write the **Deployment** documentation for \`${ctx.owner}/${ctx.repo}\`.
+    const user = `Write a SHORT **Deployment** doc for \`${ctx.owner}/${ctx.repo}\` — only what a developer needs to ship it.
 
 Detected deployment-related files: ${foundList.length ? foundList.join(", ") : "none"}
 
 ${fileBlocks}
 
-Produce comprehensive internal deployment and operations guidance. Cover every subsection below; when evidence is missing, say so explicitly instead of inventing platforms or commands.
+Produce a short doc (only what's clearly configured; omit empty sections):
 1. \`# Deployment\` heading.
-2. \`## Hosting / platforms\` — Vercel, Render, Fly, AWS, k8s, etc. (only what's actually configured or clearly referenced).
-3. \`## CI/CD\` — workflows, triggers, jobs, build/test/deploy steps, and what each pipeline appears responsible for.
-4. \`## Runtime shape\` — containers, serverless/runtime config, build artifacts, ports, process commands, and deployment entrypoints if visible.
-5. \`## Environment variables\` — env vars referenced in configs, grouped by purpose when possible; do not invent values.
-6. \`## How to deploy\` — concrete steps a company developer would follow, grounded in the above.
-7. \`## Operational notes\` — risks, external services, secrets, migrations, or manual steps visible from configs.
-8. \`## Before changing deploy/CI\` — what a developer should inspect and verify before editing deployment or CI files.`;
+2. \`## Where it runs\` — the platform(s)/CI actually configured. If nothing indicates this is deployable, say so in one line and stop.
+3. \`## How to deploy\` — the key steps, grounded in the configs above.
+4. \`## Environment\` — the required env vars/secrets, briefly. Skip if none.
 
-    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: 4500 });
+Keep it tight and concrete. Don't invent platforms or commands.`;
+
+    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: 1600 });
     return { filename: "deployment.md", content, signals };
   },
 };

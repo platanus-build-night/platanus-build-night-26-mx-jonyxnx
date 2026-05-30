@@ -39,29 +39,22 @@ export const conventions: Generator = {
       signals.push(...fallback.paths);
     }
 
-    const user = `Write the **Conventions** documentation for \`${ctx.owner}/${ctx.repo}\`.
-
-The repository was explored from the cloned checkout. Use explicit tooling config and representative source files when available.
+    const user = `Write a SHORT **Codebase patterns** doc for \`${ctx.owner}/${ctx.repo}\` — only the conventions that actually matter here.
 
 Detected config files:
 ${configFiles.map((f) => "- `" + f + "`").join("\n") || "- none"}
 
-Representative source files analyzed:
-${sampleFiles.map((f) => "- `" + f + "`").join("\n") || "- none"}
-
 ${fileBlocks}
 
-Produce comprehensive internal engineering guidance. Cover every subsection below; infer cautiously from sampled code when config is absent.
-1. \`# Conventions\` heading.
-2. \`## Tooling\` — linters, formatters, compilers, package scripts, and where they are configured.
-3. \`## Formatting\` — indentation, quotes, semicolons, trailing commas, import style, naming, and component/function style.
-4. \`## Language / compiler settings\` — TypeScript strict flags, Python version, lint targets, etc. (only what's visible).
-5. \`## Code patterns observed\` — module boundaries, component/function style, error handling, async/data flow, naming, and file organization.
-6. \`## Conventions to follow\` — actionable bullets for a new developer making changes in this repo.
-7. \`## Review checklist\` — concrete checks a reviewer should apply before approving changes.
-8. \`## Things to avoid\` — risky changes or style mismatches that would conflict with the observed codebase.`;
+Produce a short doc (only what's supported by the config/code; omit empty sections):
+1. \`# Codebase patterns\` heading.
+2. \`## Tooling\` — linter/formatter/language config that's set up, one line each.
+3. \`## Conventions that matter\` — the handful of patterns a new dev must follow (naming, structure, error handling, etc.) as short bullets.
+4. \`## Watch out for\` — a few real gotchas or anti-patterns to avoid here.
 
-    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: 5000 });
+Keep it short and concrete. Don't restate generic best practices — only what's specific to this repo.`;
+
+    const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: 1800 });
     return { filename: "conventions.md", content, signals };
   },
 };

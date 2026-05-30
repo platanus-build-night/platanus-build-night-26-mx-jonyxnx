@@ -11,7 +11,7 @@ const AGENT_SYSTEM_PROMPT = `You are writing AGENTS.md: operating instructions f
 Rules:
 - Your reader is an autonomous coding agent, not a human doing onboarding. Optimize for fast orientation and safe, correct edits.
 - Write ONLY what is supported by the provided files. If something is unknown or absent, say so explicitly. Never invent commands, paths, versions, or behavior.
-- Be dense and high-signal: prioritize what an agent must know before touching code (entry points, key files, conventions, hazards, verification commands).
+- Be dense and high-signal, but SHORT: only the essentials an agent needs before touching code (entry points, key files, conventions, hazards, verify commands). Prefer pointers to the other docs over repeating their content.
 - Tell the agent which files to open first for each kind of task, what NOT to break, and how to verify a change.
 - This file is also the index for the human-facing documentation tree, so explain what other docs exist and when the agent should read them instead of re-deriving context.
 - Output GitHub-flavored markdown. No preamble. Start with the requested heading.
@@ -99,47 +99,32 @@ export async function generateAgentsDoc(
 
   const coverageSections = manifest
     ? `
-9. \`## Documentation index\` - explain how the Notion documentation tree is organized: the repo page holds root-level docs (Local setup, Deployment, Codebase patterns, Improvements, this AGENTS.md) plus nested folder pages (one doc per significant folder; small folders are folded into their parent's doc). Render this as a list where every page name is prefixed with the exact emoji icon shown in the coverage data above so it matches the Notion sidebar. Explain how a developer should navigate it, and note that the first run documents everything while later runs refresh only changed areas.
-10. \`## Documentation coverage\` - based on the coverage data above, summarize which root docs and folders are documented and which were folded in, and call out any large or multi-concern folder whose doc should be expanded or split.
-11. \`## Gaps and recommended additions\` - list specific folders or topics that still need documentation or deeper coverage, and what each doc should contain. This is the "what's missing, add it" section.
-12. \`## CI and automation\` - GitHub Actions / Notion sync / deploy hooks when visible.
-13. \`## Change safety checklist\` - checks before handing off changes.
-14. \`## Unknowns to verify\` - facts not visible from provided files.`
+5. \`## Documentation map\` - the other docs and when to read each instead of re-deriving context. List the root docs and the folder pages, prefixing every page name with the exact emoji icon shown in the coverage data above so it matches the Notion sidebar. Note in one line that the first run documents everything and later runs refresh only changed areas.
+6. \`## Coverage & gaps\` - from the coverage data, briefly note what's documented and what's still missing or worth expanding (the "what to add next" list). Keep it short.`
     : `
-9. \`## CI and automation\` - GitHub Actions / Notion sync / deploy hooks when visible.
-10. \`## Change safety checklist\` - checks before handing off changes.
-11. \`## Unknowns to verify\` - facts not visible from provided files.`;
+5. \`## Watch out for\` - the key hazards, conventions, and unknowns an agent must respect.`;
 
   const user = `Write a root **AGENTS.md** file for \`${ctx.owner}/${ctx.repo}\`.
 
-This document lives on the Notion repo page and is written specifically FOR an AI coding agent (the human-facing docs are separate root pages: Local setup, Deployment, Codebase patterns, Improvements, plus the per-folder pages). It is BOTH the primary operating guide for an agent AND the index for that documentation tree. It must let an agent work fast and safely without reading the entire repository, and it must describe what documentation already exists and what is still missing.
+This is written specifically FOR an AI coding agent (the human-facing docs are separate root pages: Local setup, Deployment, Codebase patterns, Improvements, plus per-folder pages). It is the agent's operating guide AND the index for that documentation tree. Keep it short and high-signal — point to the other docs instead of repeating them.
 
 Repo ref: ${ctx.ref}
 Top-level directories: ${topDirs.join(", ") || "(none)"}
 
-Complete file index (${ctx.fileTree.length} files, truncated if needed):
+File index (${ctx.fileTree.length} files, truncated if needed):
 ${fileTreeList(ctx.fileTree)}
-
-File tree preview:
-\`\`\`
-${ctx.fileTreePreview(320)}
-\`\`\`
 
 Repository evidence (key files):
 
 ${fileBlocks || "(no representative files found)"}${coverageBlock}
 
-Produce:
+Produce a focused AGENTS.md (omit any section with nothing useful):
 1. \`# AGENTS.md\` heading.
-2. \`## How to get oriented fast\` - the fastest path to understand this repo (which files to open first, in order, and why).
-3. \`## File index\` - a markdown table with columns: File | Role | When to change | Quick lookup hint. Cover every important file visible in the index; group minor/config files when appropriate but do not skip major source areas.
-4. \`## Change map\` - common tasks (bugfix, new API route, UI change, config, tests, deploy, DB) mapped to exact files/directories to open first.
-5. \`## Repo mental model\` - main systems, entry points, and data flow grounded in evidence.
-6. \`## Local workflow\` - install, run, build, test, and verification commands when visible.
-7. \`## Folder guide\` - one short bullet per top-level folder: purpose, key files, and what kind of changes belong there.
-8. \`## Coding rules\` - conventions and safety rules grounded in the files.${coverageSections}`;
+2. \`## Orientation\` - what this repo is in 1-2 lines and the few files to open first.
+3. \`## Where things live\` - a compact table of the important areas only: Area/path | What it does | When to touch. Don't list every file.
+4. \`## Working safely\` - the key install/run/test/verify commands and the few rules and hazards an agent must respect.${coverageSections}`;
 
-  const content = await llm.complete({ system: AGENT_SYSTEM_PROMPT, user, maxTokens: 7000 });
+  const content = await llm.complete({ system: AGENT_SYSTEM_PROMPT, user, maxTokens: 3500 });
   return { filename: "AGENTS.md", content, signals: paths };
 }
 

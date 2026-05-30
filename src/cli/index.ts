@@ -266,11 +266,7 @@ async function resolveFullRun(
   if (opts.all) return true;
   if (notion && repoPageId) {
     const documentedBefore = await notion.childPageExists(repoPageId, AGENTS_PAGE_TITLE);
-    console.log(
-      documentedBefore
-        ? `Found ${AGENTS_PAGE_TITLE} on the repo page → incremental run (changed areas only).`
-        : `No ${AGENTS_PAGE_TITLE} on the repo page → first run, documenting the entire codebase.`,
-    );
+    console.log(documentedBefore ? "Incremental run (changed areas only)." : "First run: documenting the whole repo.");
     return !documentedBefore;
   }
   // Dry-run: full unless base/head were provided (then mimic an incremental run).
@@ -317,7 +313,6 @@ async function documentChildren(node: DirNode, parentPageId: string, state: Walk
     await documentChildren(child, folderPageId, state);
 
     // 3. Write this folder's prose LAST so it lands below the subpages.
-    console.log(`Generating folder doc: ${child.path}${deep ? " (deep)" : ""}`);
     const folderDoc = await folderGenerator(child.path, { deep }).run(state.ctx, state.llm);
     await state.sink.write(folderPageId, folderDoc.content, icon, child.path);
   }
@@ -373,9 +368,7 @@ async function main(): Promise<void> {
   // Root-level whole-codebase docs (local setup, deployment, patterns,
   // improvements). Created first so they sit at the TOP of the repo page,
   // above the per-folder pages. Always regenerated so they stay current.
-  console.log("Generating root documents (local setup, deployment, patterns, improvements)...");
   for (const { gen, title, icon } of ROOT_DOCS) {
-    console.log(`Generating root doc: ${title}...`);
     const doc = await gen.run(ctx, llm);
     await writeDoc(state, repoPageId, title, doc.content, icon, title);
     state.manifest.rootDocs.push({ title, icon });
@@ -395,14 +388,13 @@ async function main(): Promise<void> {
     console.log(fullRun ? "No folders to document." : "No changed folders to document.");
   } else {
     const scope = fullRun ? "whole repository" : `changed folders: ${(changedRoots ?? []).join(", ")}`;
-    console.log(`Documenting ${scope} (one doc per significant folder, page-in-page).`);
+    console.log(`Documenting ${scope}.`);
     await documentChildren(tree, repoPageId, state);
   }
 
   // AGENTS.md content is written LAST so it can index everything that was
   // produced and report on coverage and gaps. Its page (reserved above) also
   // marks the repo as documented, which makes the next run incremental.
-  console.log("Generating AGENTS.md (documentation index + coverage)...");
   const agentsDoc = await generateAgentsDoc(ctx, llm, state.manifest);
   await sink.write(agentsPageId, agentsDoc.content, AGENTS_ICON, AGENTS_PAGE_TITLE);
 

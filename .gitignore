@@ -7,3 +7,4 @@ tmp-repos
 .env.local
 .DS_Store
 *.log
+.vercel

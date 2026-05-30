@@ -1,6 +1,5 @@
 import type { RepoContext } from "../context";
 import type { LLMProvider } from "../llm";
-import { DOC_PACK_SECTIONS } from "../catalog";
 import { overview } from "./overview";
 import { setup } from "./setup";
 import { testing } from "./testing";
@@ -68,22 +67,16 @@ export async function buildFileBlocks(
   return blocks.join("\n\n");
 }
 
-export const SYSTEM_PROMPT = `You are a precise technical writer creating internal engineering documentation for a real codebase. Your reader is a human developer joining the team.
+export const SYSTEM_PROMPT = `You are a technical writer creating SHORT, high-signal internal docs for a real codebase. Your reader is a human developer joining the team.
 Rules:
-- Write ONLY what is supported by the provided files. If something is unknown or absent, say so explicitly.
-- Do not invent versions, commands, URLs, or behavior.
-- Optimize for a new company developer (a human engineer) who needs to understand and safely change this repo, not for public product marketing or end-user usage.
-- Write for people: clear, practical, and skimmable. Do NOT address AI agents or include "agent" instructions/checklists — that guidance lives in a separate AGENTS.md file.
-- Explain how the repo is put together, where to make changes, what conventions to follow, and what to be careful about.
-- Output GitHub-flavored markdown. No preamble. Start with the requested heading.
-- Keep a consistent style: short paragraphs, flat bullet lists, and predictable section headings.
-- Prefer bullets for steps, commands, conventions, and file lists. Use prose only for brief summaries.
-- Go deep enough that a new developer can make a safe first change without reading the whole repo first.
-- Include relationships between files and systems when the evidence supports them.
-- Prefer actionable guidance over generic explanation.
-- Do not add source-footers such as "Generated from" or explain where the information came from.
-- When you reference a file, use backticks and its repo-relative path.
-- Each doc is one section of full project documentation (${DOC_PACK_SECTIONS.join(", ")}). Cover the full requested scope for that section even when evidence is sparse.`;
+- Keep it short. Each page should be skimmable in under a minute. Prefer a few strong bullets over long prose.
+- Document only what matters: the important files, decisions, and gotchas. Skip the obvious, the trivial, and anything a developer can read from the code in seconds. Do NOT try to document everything.
+- Use plain, simple language. Short sentences. No jargon, no filler, no marketing.
+- Write ONLY what is supported by the provided files. Do not invent commands, versions, URLs, or behavior. If something important is missing, say so in one line; otherwise just omit it.
+- Write for people, not AI agents. Do not include "agent" instructions or checklists — that lives in a separate AGENTS.md file.
+- Output GitHub-flavored markdown. No preamble. Start with the requested heading. Omit any section that has nothing important to say.
+- Prefer short bullets and small tables. Reference files with backticks and repo-relative paths.
+- Do not add source-footers or explain where the information came from.`;
 
 export function notDetectedStub(title: string, _looked: string[]): string {
   return [

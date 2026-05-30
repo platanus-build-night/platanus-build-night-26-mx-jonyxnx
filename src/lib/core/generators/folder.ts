@@ -105,14 +105,13 @@ export function folderGenerator(folder: string, opts: FolderGeneratorOptions = {
       const deepSection = deep
         ? `
 
-This is a large, multi-concern folder. In addition to the sections above:
-- \`## Concerns breakdown\` - identify the distinct responsibilities/concerns living in this folder and which files belong to each. If a concern is large enough to deserve its own document, call it out.
-- Go deeper on each major file or module rather than summarizing at a high level.`
+This folder is larger than most, so add one extra section:
+- \`## Main parts\` - group the files by concern in a few short bullets (don't catalog every file). If a part is big enough to deserve its own doc, note it in one line.`
         : "";
 
-      const user = `Write ${deep ? "deep, thorough" : "focused"} internal documentation for the \`${normalizedFolder}\` folder in \`${ctx.owner}/${ctx.repo}\`.
+      const user = `Write a SHORT doc for the \`${normalizedFolder}\` folder in \`${ctx.owner}/${ctx.repo}\` — enough to know what's here and where to make changes, without reading every file.
 
-This folder contains ${files.length} files across ${subdirs.length} immediate subfolders. Be specific: a developer should be able to work here without opening every file. Smaller subfolders that do not have their own page are documented here as part of this folder.
+This folder has ${files.length} files across ${subdirs.length} immediate subfolders.
 
 Immediate subfolders: ${subdirs.length ? subdirs.join(", ") : "(none)"}
 
@@ -125,18 +124,15 @@ Representative file contents:
 
 ${fileBlocks || "(no representative source files found)"}
 
-Produce internal folder documentation:
+Produce a short doc (omit any section with nothing important):
 1. \`# ${normalizedFolder}\` heading.
-2. \`## Purpose\` - what this folder owns and why it exists.
-3. \`## Structure\` - each immediate subfolder and the most important files, with a one-line role for each.
-4. \`## Key modules and responsibilities\` - explain the main files/classes/functions visible from the samples, including notable exports and what calls them.
-5. \`## Data flow\` - how data/control moves through this folder when the evidence supports it.
-6. \`## Connections\` - imports from and exports to the rest of the repo, plus external libraries used here.
-7. \`## Change map\` - common tasks (add/modify/remove behavior) mapped to the exact files to open first.
-8. \`## Fast lookup\` - which symbols to search and which files to read first for the most common questions about this folder.
-9. \`## Gotchas\` - practical cautions, edge cases, and unknowns a developer should check before editing here.${deepSection}`;
+2. \`## Purpose\` - what this folder owns, in 1-2 sentences.
+3. \`## Key files\` - only the few most important files/subfolders, one short line each. Skip minor ones.
+4. \`## How to work here\` - where to start for common changes, plus any real gotcha.${deepSection}
 
-      const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: deep ? 6500 : 4500 });
+Keep it short and plain. Don't document every file — only the important ones.`;
+
+      const content = await llm.complete({ system: SYSTEM_PROMPT, user, maxTokens: deep ? 2800 : 1600 });
       return { filename: `${normalizedFolder}.md`, content, signals: sampleFiles };
     },
   };
