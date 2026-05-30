@@ -5,6 +5,7 @@ import process from "node:process";
 import simpleGit from "simple-git";
 import { RepoContext } from "../lib/core/context";
 import { changedTopDirs } from "../lib/core/diff";
+import { generateAgentDoc } from "../lib/core/generators/agent";
 import { folderGenerator } from "../lib/core/generators/folder";
 import { getLLM, type ProviderName } from "../lib/core/llm";
 import { createNotionDocsFromEnv } from "../lib/core/notion";
@@ -144,18 +145,31 @@ async function main(): Promise<void> {
   });
 
   const folders = opts.all ? ctx.topDirs() : await changedTopDirs(dir, opts.base, opts.head);
+  const llm = getLLM(opts.provider);
+  const notionTarget = opts.dryRun ? null : createNotionDocsFromEnv();
+  const repoPage = notionTarget
+    ? await notionTarget.notion.ensureRepoPage(notionTarget.parentPageId, `${identity.owner}/${identity.repo}`)
+    : null;
+
+  console.log("Generating AGENT.md...");
+  const agentDoc = await generateAgentDoc(ctx, llm);
+  if (opts.dryRun) {
+    printDryRun("AGENT.md", agentDoc.content);
+  } else {
+    if (!notionTarget || !repoPage) {
+      throw new Error("Notion target was not initialized.");
+    }
+
+    const page = await notionTarget.notion.upsertMarkdownPage(repoPage.id, "AGENT.md", agentDoc.content);
+    console.log(`${page.created ? "Created" : "Updated"} Notion page for AGENT.md.`);
+  }
+
   if (folders.length === 0) {
     console.log("No top-level folders to document.");
     return;
   }
 
   console.log(`Generating docs for ${folders.length} folder(s): ${folders.join(", ")}`);
-
-  const llm = getLLM(opts.provider);
-  const notionTarget = opts.dryRun ? null : createNotionDocsFromEnv();
-  const repoPage = notionTarget
-    ? await notionTarget.notion.ensureRepoPage(notionTarget.parentPageId, `${identity.owner}/${identity.repo}`)
-    : null;
 
   for (const folder of folders) {
     console.log(`Generating ${folder}...`);

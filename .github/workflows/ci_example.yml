@@ -1,17 +1,5 @@
 name: kitdoc CI example (self-doc)
 
-# Example workflow: kitdoc documents its own repository and syncs the docs
-# to Notion. Mirror this in any project repo to get the same flow.
-#
-# Required repo secrets:
-#   NOTION_TOKEN     - Notion integration token with edit access to the page
-#   NOTION_PAGE_ID   - Parent Notion page ID where docs are written
-#   OPENAI_API_KEY   - OpenAI API key (this example uses provider=openai)
-#
-# Triggers:
-#   - workflow_dispatch: run on demand from the GitHub Actions UI
-#   - push to main:      auto-update docs whenever main moves
-
 on:
   workflow_dispatch:
     inputs:

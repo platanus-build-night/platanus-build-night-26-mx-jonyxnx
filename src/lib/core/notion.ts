@@ -34,7 +34,11 @@ export class NotionDocs {
   }
 
   async upsertFolderPage(repoPageId: string, folderTitle: string, markdown: string): Promise<NotionPageRef> {
-    const page = await this.ensureChildPage(repoPageId, folderTitle);
+    return this.upsertMarkdownPage(repoPageId, folderTitle, markdown);
+  }
+
+  async upsertMarkdownPage(parentPageId: string, title: string, markdown: string): Promise<NotionPageRef> {
+    const page = await this.ensureChildPage(parentPageId, title);
     await this.clearBlockChildren(page.id);
     await this.appendMarkdown(page.id, markdown);
     return page;

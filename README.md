@@ -39,7 +39,7 @@ Have fun! 🚀
 
 ## Kitdoc Notion Docs
 
-This repo includes a reusable GitHub Action that documents the top-level folders changed in a pull request and syncs the generated markdown to Notion.
+This repo includes a reusable GitHub Action that documents a repository and syncs generated markdown to Notion. Each run creates or updates a root `AGENT.md` page for repo-wide agent guidance, then creates or updates pages for the top-level folders changed in a pull request.
 
 Required repository secrets:
 
@@ -87,4 +87,4 @@ jobs:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-The action checks out the target repository with full git history, checks out the kitdoc repository separately, runs `npm ci` for kitdoc, and then runs the CLI against the target checkout using the pull request base and head SHAs.
+The action checks out the target repository with full git history, checks out the kitdoc repository separately, runs `npm ci` for kitdoc, creates the root `AGENT.md` Notion page, and then runs the CLI against the target checkout using the pull request base and head SHAs.
